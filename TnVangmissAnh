@@ -1,0 +1,122 @@
+--[[
+    YLW GAME SERVICE - ENGLISH VERSION
+    Features: ESP, Aim, Hitbox (15-25), Speed (50-300), Jump (50-200)
+    Brand: YLW Cày Thuê
+]]
+
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
+local Window = Library.CreateLib("YLW SERVICE - PANEL", "DarkTheme")
+
+-- Global Variables
+_G.HitboxSize = 15
+_G.Speed = 50
+_G.Jump = 50
+_G.EspEnabled = false
+_G.AimEnabled = false
+
+-- ================= COMBAT TAB =================
+local MainTab = Window:NewTab("Combat")
+local CombatSection = MainTab:NewSection("Battle Support")
+
+-- 1. PLAYER ESP
+CombatSection:NewToggle("Player ESP", "Visualizes players through walls", function(state)
+    _G.EspEnabled = state
+    task.spawn(function()
+        while _G.EspEnabled do
+            for _, v in pairs(game.Players:GetPlayers()) do
+                if v ~= game.Players.LocalPlayer and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
+                    local hrp = v.Character.HumanoidRootPart
+                    if not hrp:FindFirstChild("YLW_ESP") then
+                        local Box = Instance.new("BoxHandleAdornment")
+                        Box.Name = "YLW_ESP"
+                        Box.Size = Vector3.new(4, 6, 1)
+                        Box.AlwaysOnTop = true
+                        Box.ZIndex = 10
+                        Box.Transparency = 0.6
+                        Box.Color3 = Color3.fromRGB(255, 255, 0)
+                        Box.Adornee = hrp
+                        Box.Parent = hrp
+                    end
+                end
+            end
+            task.wait(1)
+        end
+        if not _G.EspEnabled then
+            for _, v in pairs(game.Players:GetPlayers()) do
+                if v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
+                    local old = v.Character.HumanoidRootPart:FindFirstChild("YLW_ESP")
+                    if old then old:Destroy() end
+                end
+            end
+        end
+    end)
+end)
+
+-- 2. AIMLOCK
+CombatSection:NewToggle("Aimlock", "Auto-locks camera on closest target", function(state)
+    _G.AimEnabled = state
+    local Camera = workspace.CurrentCamera
+    local LocalPlayer = game.Players.LocalPlayer
+
+    game:GetService("RunService").RenderStepped:Connect(function()
+        if _G.AimEnabled then
+            local Target = nil
+            local MaxDist = math.huge
+            for _, v in pairs(game.Players:GetPlayers()) do
+                if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild("HumanoidRootPart") and v.Character.Humanoid.Health > 0 then
+                    local Pos, OnScreen = Camera:WorldToViewportPoint(v.Character.HumanoidRootPart.Position)
+                    if OnScreen then
+                        local MouseDist = (Vector2.new(Pos.X, Pos.Y) - Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)).Magnitude
+                        if MouseDist < MaxDist then
+                            Target = v.Character.HumanoidRootPart
+                            MaxDist = MouseDist
+                        end
+                    end
+                end
+            end
+            if Target then
+                Camera.CFrame = CFrame.new(Camera.CFrame.Position, Target.Position)
+            end
+        end
+    end)
+end)
+
+-- 3. HITBOX EXPANDER (15-25)
+CombatSection:NewSlider("Hitbox Size", "Expand enemy hitboxes", 25, 15, function(s)
+    _G.HitboxSize = s
+    task.spawn(function()
+        while task.wait(0.5) do
+            for _, v in pairs(game.Players:GetPlayers()) do
+                if v ~= game.Players.LocalPlayer and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
+                    v.Character.HumanoidRootPart.Size = Vector3.new(_G.HitboxSize, _G.HitboxSize, _G.HitboxSize)
+                    v.Character.HumanoidRootPart.Transparency = 0.8
+                    v.Character.HumanoidRootPart.CanCollide = false
+                end
+            end
+        end
+    end)
+end)
+
+-- ================= MOVEMENT TAB =================
+local MoveTab = Window:NewTab("Movement")
+local MoveSection = MoveTab:NewSection("Character Stats")
+
+-- 4. WALK SPEED (50-300)
+MoveSection:NewSlider("WalkSpeed", "Modify movement speed", 300, 50, function(s)
+    _G.Speed = s
+end)
+
+-- 5. JUMP POWER (50-200)
+MoveSection:NewSlider("Jump Power", "Modify jump height", 200, 50, function(s)
+    _G.Jump = s
+end)
+
+-- Stats enforcement loop
+game:GetService("RunService").Stepped:Connect(function()
+    if game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("Humanoid") then
+        game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = _G.Speed
+        game.Players.LocalPlayer.Character.Humanoid.JumpPower = _G.Jump
+    end
+end)
+
+print("YLW English Script Ready to Use!")
